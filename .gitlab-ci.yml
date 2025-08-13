@@ -54,13 +54,30 @@ sonarqube:
   variables:
     SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
     GIT_DEPTH: "0"
+    SONAR_HOST_URL: "${SONAR_HOST_URL}"
+    SONAR_TOKEN: "${SONAR_TOKEN}"
+    GITLAB_TOKEN: "${GITLAB_TOKEN}"
+  before_script:
+    - |
+      if [ -f package-lock.json ]; then
+        npm ci
+        npm run test
+      fi
   cache:
     key: "${CI_JOB_NAME}"
     paths:
       - .sonar/cache
   script:
     - sonar-scanner
-  allow_failure: true
+      -Dsonar.projectKey=${CI_PROJECT_PATH_SLUG}
+      -Dsonar.projectName=${CI_PROJECT_PATH}
+      -Dsonar.qualitygate.wait=true
+      -Dsonar.sources=src
+      -Dsonar.tests=test
+      -Dsonar.test.inclusions=**/*.spec.ts,**/*.test.ts,**/*.e2e-spec.ts
+      -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+      -Dsonar.branch.name=${CI_COMMIT_REF_NAME}
+  allow_failure: false  # делаем обязательным
   only:
     - master
     - merge_requests
