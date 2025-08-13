@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: online-store-api
+  namespace: test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: online-store-api
+  template:
+    metadata:
+      labels:
+        app: online-store-api
+    spec:
+      containers:
+      - name: api
+        image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "test"
+        - name: PORT
+          value: "3000"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: online-store-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
