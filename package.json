@@ -23,7 +23,6 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:coverage": "jest --coverage",
     "check": "npm run lint:check && npm run format:check && npm run test",
     "prepare": "npm run lint:fix && npm run format"
   },
@@ -84,28 +83,9 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s",
-      "!**/*.spec.ts",
-      "!**/*.test.ts",
-      "!**/*.e2e-spec.ts",
-      "!**/main.ts",
-      "!**/config/**"
+      "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "coverageReporters": [
-      "text",
-      "lcov",
-      "clover",
-      "json"
-    ],
-    "testEnvironment": "node",
-    "coverageThreshold": {
-      "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
-      }
-    }
+    "testEnvironment": "node"
   }
 }

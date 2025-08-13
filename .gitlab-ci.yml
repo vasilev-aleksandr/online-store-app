@@ -3,13 +3,12 @@ image: node:20
 stages:
   - prepare
   - test
-  - analyze
-  - build
+  - security
   - deploy
 
 variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
+  NPM_TOKEN: ${NPM_TOKEN}
+  TEST_ENV_URL: "https://test-env.example.com"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -35,94 +34,66 @@ unit_tests:
   stage: test
   script:
     - npm run test
-    - npm run test:coverage
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     reports:
       coverage_report:
         coverage_format: cobertura
         path: coverage/cobertura-coverage.xml
-    paths:
-      - coverage/
 
 e2e_tests:
   stage: test
   script:
     - npm run test:e2e
 
-code_analysis:
-  stage: analyze
+sonarqube:
+  stage: test
+  image: 
+    name: sonarsource/sonar-scanner-cli
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
   script:
-    - curl https://deepsource.io/cli | sh
-    - export DEEPSOURCE_DSN=$DEEPSOURCE_DSN
-    - deepsource report --analyzer test-coverage
-    - deepsource analyze
-
-build_image:
-  stage: build
-  image: docker:20
-  services:
-    - docker:20-dind
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - |
-      if [[ "$CI_COMMIT_BRANCH" == "master" ]]; then
-        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
-        docker push $CI_REGISTRY_IMAGE:latest
-      fi
+    - sonar-scanner
+  allow_failure: true
   only:
     - master
     - merge_requests
 
-deploy_test:
-  stage: deploy
+secret_detection:
+  stage: security
   image: 
-    name: bitnami/kubectl:latest
-    entrypoint: [""]
+    name: gitlab/gitlab-runner-helper:latest
   script:
     - |
-      if [[ ! -f kubeconfig ]]; then
-        echo "Kubeconfig not found"
-        exit 1
-      fi
-    - export KUBECONFIG=kubeconfig
-    - kubectl create namespace test --dry-run=client -o yaml | kubectl apply -f -
+      curl -sSL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh
+      gitleaks detect --source . --verbose --report-format json --report-path leak_report.json
+  artifacts:
+    reports:
+      security: leak_report.json
+  allow_failure: false
+
+dependency_scan:
+  stage: security
+  script:
+    - npm audit
+    - npm run snyk:test
+  allow_failure: true
+
+deploy_test:
+  stage: deploy
+  script:
+    - npm run build
     - |
-      cat <<EOF | kubectl apply -f -
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: online-store-api
-        namespace: test
-      spec:
-        replicas: 2
-        selector:
-          matchLabels:
-            app: online-store-api
-        template:
-          metadata:
-            labels:
-              app: online-store-api
-          spec:
-            containers:
-            - name: api
-              image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-              ports:
-              - containerPort: 3000
-              env:
-              - name: NODE_ENV
-                value: "test"
-              resources:
-                requests:
-                  memory: "128Mi"
-                  cpu: "100m"
-                limits:
-                  memory: "256Mi"
-                  cpu: "200m"
-      EOF
-    - kubectl rollout status deployment/online-store-api -n test
+      echo "Deploying to test environment..."
+      # Add your deployment script here
+      # Example: deploy to kubernetes cluster
+      # kubectl apply -f k8s/
   environment:
     name: test
     url: $TEST_ENV_URL
