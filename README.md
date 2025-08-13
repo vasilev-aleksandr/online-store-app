@@ -2,6 +2,10 @@
 
 A small online store API built with NestJS, featuring JWT authentication, product management, and comprehensive test coverage.
 
+[![pipeline status](https://gitlab.com/vasilev-aleksandr/online-store-app/badges/master/pipeline.svg)](https://gitlab.com/vasilev-aleksandr/online-store-app/-/commits/master)
+[![coverage report](https://gitlab.com/vasilev-aleksandr/online-store-app/badges/master/coverage.svg)](https://gitlab.com/vasilev-aleksandr/online-store-app/-/commits/master)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=online-store-app&metric=alert_status)](https://sonarcloud.io/dashboard?id=online-store-app)
+
 ## Features
 
 - JWT-based authentication
